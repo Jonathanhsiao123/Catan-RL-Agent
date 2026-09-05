@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+*.egg-info/
+
+# Training artifacts (checkpoints get large fast; keep the repo to code)
+checkpoints/*.pt
+!checkpoints/**/ckpt_00003.pt
+!checkpoints/**/ckpt_00030.pt
+!checkpoints/**/ckpt_00060.pt
+*.calib.json
+logs/
+metrics.csv
+
+# Generated outputs
+*.html
+!replay_selfplay.html
+curves*.png
+
+# OS / editor
+.DS_Store
+.vscode/
