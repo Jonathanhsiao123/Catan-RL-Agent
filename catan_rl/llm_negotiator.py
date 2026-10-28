@@ -11,10 +11,21 @@ over tens of millions of steps, keeps training reproducible, and keeps the
 per-game cost at zero.
 
 Detection order (first hit wins):
-  1. $CATAN_LLM_URL          any OpenAI-compatible /v1 endpoint
-  2. Ollama                  http://127.0.0.1:11434
-  3. LM Studio               http://127.0.0.1:1234/v1
-  4. llama.cpp server        http://127.0.0.1:8080/v1
+  1. Luminal Cloud           $LUMINAL_API_KEY + $LUMINAL_BASE_URL
+  2. $CATAN_LLM_URL          any OpenAI-compatible /v1 endpoint
+                             (bearer key from $CATAN_LLM_API_KEY, optional)
+  3. Ollama                  http://127.0.0.1:11434
+  4. LM Studio               http://127.0.0.1:1234/v1
+  5. llama.cpp server        http://127.0.0.1:8080/v1
+
+Use Luminal's hosted API (OpenAI-compatible chat completions, bearer auth).
+Copy .env.example to .env at the repo root (gitignored) and fill it in, or:
+  export LUMINAL_API_KEY=...                       # never commit this
+  export LUMINAL_BASE_URL=https://<your endpoint>/v1
+  export LUMINAL_MODEL=<model id>                  # optional if /models lists one
+  python -m catan_rl.llm_negotiator                # prints provider + test call
+Remote calls get $CATAN_LLM_TIMEOUT seconds (default 15) instead of the 2s
+local budget; on timeout or any error the layer still falls back silently.
 
 Enable a local model on a machine that has one:
   ollama serve & ; ollama pull qwen2.5:7b-instruct
@@ -50,33 +61,74 @@ import json
 import os
 import urllib.error
 import urllib.request
+from pathlib import Path
 from typing import Optional
 
-_TIMEOUT = 1.0          # detection only; keep startup snappy
+
+def _load_dotenv(path: Path = Path(__file__).resolve().parents[1] / ".env"):
+    """Minimal KEY=VALUE loader for the repo-root .env; real env vars win."""
+    if not path.is_file():
+        return
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, val = line.partition("=")
+        key = key.strip().removeprefix("export ").strip()
+        os.environ.setdefault(key, val.strip().strip('"').strip("'"))
+
+
+_load_dotenv()
+
+_TIMEOUT = 1.0         # detection only; keep startup snappy
 _CALL_TIMEOUT = 2.0     # per generation call, fall back on timeout
+_REMOTE_TIMEOUT = float(os.environ.get("CATAN_LLM_TIMEOUT", "15"))
 _cached = None
 
 
-def _probe(url: str, timeout=_TIMEOUT) -> Optional[dict]:
+def _auth_headers(api_key: Optional[str]) -> dict:
+    return {"Authorization": f"Bearer {api_key}"} if api_key else {}
+
+
+def _probe(url: str, timeout=_TIMEOUT, api_key: Optional[str] = None) -> Optional[dict]:
     try:
-        with urllib.request.urlopen(url, timeout=timeout) as r:
+        req = urllib.request.Request(url, headers=_auth_headers(api_key))
+        with urllib.request.urlopen(req, timeout=timeout) as r:
             return json.loads(r.read() or b"{}")
     except Exception:
         return None
 
 
+def _remote(kind: str, base: str, api_key: Optional[str],
+            model: Optional[str]) -> Optional[dict]:
+    """OpenAI-compatible remote endpoint; model from env or the first /models entry."""
+    base = base.rstrip("/")
+    if not model:
+        info = _probe(f"{base}/models", timeout=_REMOTE_TIMEOUT, api_key=api_key)
+        data = (info or {}).get("data") or []
+        model = data[0].get("id") if data else None
+    if model:
+        return dict(kind=kind, base_url=base, model=model, api_key=api_key,
+                    timeout=_REMOTE_TIMEOUT)
+    return None
+
+
 def detect_local_llm() -> Optional[dict]:
-    """Return {kind, base_url, model} for the first local LLM found, else None."""
+    """Return {kind, base_url, model, ...} for the first LLM found, else None."""
+    lum_key = os.environ.get("LUMINAL_API_KEY")
+    lum_url = os.environ.get("LUMINAL_BASE_URL")
+    if lum_key and lum_url:
+        cfg = _remote("luminal", lum_url, lum_key, os.environ.get("LUMINAL_MODEL"))
+        if cfg:
+            return cfg
+
     env_url = os.environ.get("CATAN_LLM_URL")
     if env_url:
-        base = env_url.rstrip("/")
-        info = _probe(f"{base}/models")
-        model = os.environ.get("CATAN_LLM_MODEL")
-        if info and not model:
-            data = info.get("data") or []
-            model = data[0].get("id") if data else None
-        if model:
-            return dict(kind="openai-compatible", base_url=base, model=model)
+        cfg = _remote("openai-compatible", env_url,
+                      os.environ.get("CATAN_LLM_API_KEY"),
+                      os.environ.get("CATAN_LLM_MODEL"))
+        if cfg:
+            return cfg
 
     tags = _probe("http://127.0.0.1:11434/api/tags")
     if tags:
@@ -110,7 +162,7 @@ class LLMNegotiator:
 
     def describe(self) -> str:
         if not self.available():
-            return "no local LLM detected (natural-language layer off)"
+            return "no LLM detected (natural-language layer off)"
         return f"{self.config['kind']} / {self.config['model']}"
 
     # ---- generation primitive (used by the TODO methods above) ----
@@ -130,10 +182,13 @@ class LLMNegotiator:
                 payload = dict(model=cfg["model"], max_tokens=max_tokens,
                                messages=[dict(role="system", content=system),
                                          dict(role="user", content=user)])
+            headers = {"Content-Type": "application/json",
+                       **_auth_headers(cfg.get("api_key"))}
             req = urllib.request.Request(
                 url, data=json.dumps(payload).encode(),
-                headers={"Content-Type": "application/json"}, method="POST")
-            with urllib.request.urlopen(req, timeout=_CALL_TIMEOUT) as r:
+                headers=headers, method="POST")
+            timeout = cfg.get("timeout", _CALL_TIMEOUT)
+            with urllib.request.urlopen(req, timeout=timeout) as r:
                 data = json.loads(r.read())
             if cfg["kind"] == "ollama":
                 return (data.get("message") or {}).get("content")
@@ -171,7 +226,7 @@ def get_negotiator(force_redetect: bool = False) -> LLMNegotiator:
 
 if __name__ == "__main__":
     neg = get_negotiator()
-    print("local LLM:", neg.describe())
+    print("LLM:", neg.describe())
     if neg.available():
         out = neg._generate("You are terse.", "Say OK.")
         print("test generation:", out if out else "(call failed; layer stays off)")

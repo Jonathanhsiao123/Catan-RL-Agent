@@ -21,3 +21,6 @@ curves*.png
 # OS / editor
 .DS_Store
 .vscode/
+
+# Secrets
+.env
