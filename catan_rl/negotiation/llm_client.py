@@ -98,13 +98,23 @@ class LLMClient:
                             error=f"{type(e).__name__}: {e}")
         dt = time.time() - t0
 
+        finish = None
         if ollama:
             text = (data.get("message") or {}).get("content")
             pt, ct = data.get("prompt_eval_count", 0), data.get("eval_count", 0)
         else:
-            text = data["choices"][0]["message"].get("content")
+            choice = (data.get("choices") or [{}])[0]
+            text = (choice.get("message") or {}).get("content")
+            finish = choice.get("finish_reason")
             usage = data.get("usage") or {}
             pt, ct = usage.get("prompt_tokens", 0), usage.get("completion_tokens", 0)
         if text:
             text = _THINK.sub("", text).strip()
+        if not text:
+            # A 200 with no content: usually a reasoning model that spent the
+            # whole token budget thinking (finish_reason "length"). Report it
+            # as an error so it is visible and never cached as a parse.
+            return LLMReply(None, cfg["model"], pt, ct, dt,
+                            error=f"empty content (finish_reason={finish}, "
+                                  f"completion_tokens={ct})")
         return LLMReply(text, cfg["model"], pt, ct, dt)

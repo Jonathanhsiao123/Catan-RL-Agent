@@ -5,9 +5,10 @@
 {"id": "s005", "slice": "simple", "speaker": "WHITE", "text": "trading 2 brick for 1 wheat", "label": {"kind": "offer", "to": null, "give": {"BRICK": 2}, "get": {"WHEAT": 1}, "has_dropped": false}}
 {"id": "s006", "slice": "simple", "speaker": "WHITE", "text": "Give me your ore and I'll hand over a sheep", "label": {"kind": "offer", "to": null, "give": {"SHEEP": 1}, "get": {"ORE": 1}, "has_dropped": false}}
 {"id": "s007", "slice": "simple", "speaker": "WHITE", "text": "1 lumber for 1 grain, anyone?", "label": {"kind": "offer", "to": null, "give": {"WOOD": 1}, "get": {"WHEAT": 1}, "has_dropped": false}}
-{"id": "s008", "slice": "simple", "speaker": "WHITE", "text": "BLUE: 3 wood for 1 ore", "label": {"kind": "offer", "to": "BLUE", "give": {"WOOD": 3}, "get": {"ORE": 1}, "has_dropped": false}}
+{"id": "s008", "slice": "simple", "speaker": "WHITE", "text": "BLUE, 3 wood for 1 ore?", "label": {"kind": "offer", "to": "BLUE", "give": {"WOOD": 3}, "get": {"ORE": 1}, "has_dropped": false}}
 {"id": "s009", "slice": "simple", "speaker": "WHITE", "text": "would you take two wheat for a single ore?", "label": {"kind": "offer", "to": null, "give": {"WHEAT": 2}, "get": {"ORE": 1}, "has_dropped": false}}
 {"id": "s010", "slice": "simple", "speaker": "WHITE", "text": "4 sheep for 1 brick", "label": {"kind": "no_offer"}}
+{"id": "s011", "slice": "simple", "speaker": "WHITE", "text": "need wood, giving clay", "label": {"kind": "offer", "to": null, "give": {"BRICK": 1}, "get": {"WOOD": 1}, "has_dropped": false}}
 {"id": "m001", "slice": "multi", "speaker": "WHITE", "text": "wheat and sheep for your brick", "label": {"kind": "offer", "to": null, "give": {"WHEAT": 1, "SHEEP": 1}, "get": {"BRICK": 1}, "has_dropped": false}}
 {"id": "m002", "slice": "multi", "speaker": "WHITE", "text": "I'll give 2 wood and a brick for an ore and a wheat", "label": {"kind": "offer", "to": null, "give": {"WOOD": 2, "BRICK": 1}, "get": {"ORE": 1, "WHEAT": 1}, "has_dropped": false}}
 {"id": "m003", "slice": "multi", "speaker": "WHITE", "text": "ORANGE, my ore for your wood and brick", "label": {"kind": "offer", "to": "ORANGE", "give": {"ORE": 1}, "get": {"WOOD": 1, "BRICK": 1}, "has_dropped": false}}
@@ -16,7 +17,7 @@
 {"id": "m006", "slice": "multi", "speaker": "WHITE", "text": "2 wheat and 2 sheep for 1 ore", "label": {"kind": "offer", "to": null, "give": {"WHEAT": 2, "SHEEP": 2}, "get": {"ORE": 1}, "has_dropped": false}}
 {"id": "a001", "slice": "ambiguous", "speaker": "WHITE", "text": "I need ore, what do you want?", "label": {"kind": "clarify"}}
 {"id": "a002", "slice": "ambiguous", "speaker": "WHITE", "text": "anyone trading?", "label": {"kind": "clarify"}}
-{"id": "a003", "slice": "ambiguous", "speaker": "WHITE", "text": "need wood, giving clay", "label": {"kind": "clarify"}}
+{"id": "a003", "slice": "ambiguous", "speaker": "WHITE", "text": "need some wood, can give a bit of clay", "label": {"kind": "clarify"}}
 {"id": "a004", "slice": "ambiguous", "speaker": "WHITE", "text": "I've got plenty of wood if anyone needs it", "label": {"kind": "clarify"}}
 {"id": "a005", "slice": "ambiguous", "speaker": "WHITE", "text": "who has sheep?", "label": {"kind": "clarify"}}
 {"id": "a006", "slice": "ambiguous", "speaker": "WHITE", "text": "what would you give me for my ore?", "label": {"kind": "clarify"}}
